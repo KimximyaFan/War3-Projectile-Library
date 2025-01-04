@@ -4,6 +4,7 @@ struct Projectile
     public unit projectile_owner
     public real eff_x
     public real eff_y
+    public real eff_z
     public real dmg
     public real coll_size
     public boolean dmg_type
@@ -46,6 +47,9 @@ struct Projectile
     public real standard_angle
     public integer count
     public boolean flag
+    public real old_x
+    public real old_y
+    public real old_z
 
     public static method create takes nothing returns thistype
         local thistype this = thistype.allocate()
@@ -105,6 +109,32 @@ struct Projectile
         set g = null
         set c = null
         return is_exist
+    endmethod
+    
+    public method Save_Old_Position takes nothing returns nothing
+        set old_x = eff_x
+        set old_y = eff_y
+        set old_z = eff_z
+    endmethod
+    
+    public method Facing_Direction_Vector takes nothing returns nothing
+        local real d_vec_x = eff_x - old_x
+        local real d_vec_y = eff_y - old_y
+        local real d_vec_z = eff_z - old_z
+        local real yaw = Atan2BJ(d_vec_y, d_vec_x)
+        local real pitch = -Atan2BJ(d_vec_z, SquareRoot(d_vec_x*d_vec_x + d_vec_y*d_vec_y))
+        
+        /*
+        if (d_vec_x > 0) then
+            set pitch = -pitch
+        endif
+        */
+        call EXEffectMatReset(projectile_eff)
+        call EXEffectMatRotateY(projectile_eff, pitch)
+        call EXEffectMatRotateZ(projectile_eff, yaw)
+        
+        
+        call Save_Old_Position()
     endmethod
 
 endstruct
@@ -258,7 +288,6 @@ private function Bezier_Like_Projectile_Func2 takes nothing returns nothing
     local effect effect2
     local real x_unit_dist
     local real y_unit_dist
-    local real z
 
     set P.elapsed_time = P.elapsed_time + 0.02
     
@@ -277,16 +306,16 @@ private function Bezier_Like_Projectile_Func2 takes nothing returns nothing
     
     set loc = Location(P.eff_x, P.eff_y)
     
-    set z = P.eff_height + P.elapsed_time * ( P.vertical - 0.5 * P.z_accel * P.elapsed_time )
+    set P.eff_z = P.eff_height + P.elapsed_time * ( P.vertical - 0.5 * P.z_accel * P.elapsed_time )
     
-    if z <= GetLocationZ(loc) then
-        set z = GetLocationZ(loc)
+    if P.eff_z <= GetLocationZ(loc) then
+        set P.eff_z = GetLocationZ(loc)
         set is_end = true
     endif
 
     if P.is_pathable == false and IsTerrainPathable(EXGetEffectX(P.projectile_eff), EXGetEffectY(P.projectile_eff), PATHING_TYPE_WALKABILITY) == true then
         set is_end = true
-        set z = GetLocationZ(loc)
+        set P.eff_z = GetLocationZ(loc)
     endif
     
     if P.trg != null and is_end == true then
@@ -294,7 +323,9 @@ private function Bezier_Like_Projectile_Func2 takes nothing returns nothing
         call TriggerExecute(P.trg)
     endif
     
-    call EXSetEffectZ(P.projectile_eff, z)
+    call EXSetEffectZ(P.projectile_eff, P.eff_z)
+    
+    call P.Facing_Direction_Vector()
 
     if is_end == true then
         call P.Area_Dmg()
@@ -327,9 +358,13 @@ private function Bezier_Like_Projectile_Func takes nothing returns nothing
     local Projectile P = LoadInteger(HT, id, 0)
     local effect e = AddSpecialEffect(P.eff, P.eff_x, P.eff_y)
     
+    set P.eff_z = EXGetEffectZ(e) + P.eff_height
+    
+    call P.Save_Old_Position()
+    
     call EXSetEffectSize(e, P.eff_size/100)
     call EXEffectMatRotateZ(e, P.angle)
-    call EXSetEffectZ(e, EXGetEffectZ(e) + P.eff_height)
+    call EXSetEffectZ(e, P.eff_z)
     
     set P.projectile_eff = e
     set P.x_accel = 2 * (P.dist + P.back * P.time) / (P.time * P.time)
