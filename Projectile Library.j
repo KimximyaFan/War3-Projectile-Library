@@ -69,6 +69,7 @@ struct Projectile
         set projectile_owner = null
         set trg = null
         set eff_on_target = null
+        set eff_after = null
         set target = null
         call thistype.deallocate( this )
     endmethod
@@ -133,16 +134,10 @@ struct Projectile
         local real d_vec_z = eff_z - old_z
         local real yaw = Atan2BJ(d_vec_y, d_vec_x)
         local real pitch = -Atan2BJ(d_vec_z, SquareRoot(d_vec_x*d_vec_x + d_vec_y*d_vec_y))
-        
-        /*
-        if (d_vec_x > 0) then
-            set pitch = -pitch
-        endif
-        */
+
         call EXEffectMatReset(projectile_eff)
         call EXEffectMatRotateY(projectile_eff, pitch)
         call EXEffectMatRotateZ(projectile_eff, yaw)
-        
         
         call Save_Old_Position()
     endmethod
@@ -334,7 +329,7 @@ private function Bezier_Like_Projectile_Func2 takes nothing returns nothing
     
     call EXSetEffectZ(P.projectile_eff, P.eff_z)
     
-    //call P.Facing_Direction_Vector()
+    call P.Facing_Direction_Vector()
 
     if is_end == true then
         call P.Area_Dmg()
