@@ -1,13 +1,14 @@
 struct Projectile
 
     public effect projectile_eff
-    public unit projectile_owner
+    public unit owner
+    public unit target
     public real eff_x
     public real eff_y
     public real eff_z
     public real dmg
     public real coll_size
-    public boolean dmg_type
+    public integer dmg_type
     public real time
     public real dist
     public real unit_dist /* 0.02초당 가야할 거리 */
@@ -28,6 +29,7 @@ struct Projectile
     public real z_velocity
     public real eff_after_size
     public real gravity
+    public real front
     public real back
     public real side
     public real vertical
@@ -43,7 +45,6 @@ struct Projectile
     public real array M0[3]
     public real array M1[3]
     public real array M2[3]
-    public unit target
     public real radius
     public real standard_angle
     public integer count
@@ -51,6 +52,10 @@ struct Projectile
     public real old_x
     public real old_y
     public real old_z
+    public real bezier_x
+    public real bezier_y
+    public real bezier_z
+    public string attach_point
 
     public static method create takes nothing returns thistype
         local thistype this = thistype.allocate()
@@ -59,67 +64,21 @@ struct Projectile
     
     public method destroy takes nothing returns nothing
         if filter_group != null then
-            call Group_Clear(filter_group)
+            call GroupClear(filter_group)
+            call DestroyGroup(filter_group)
         endif
+        set owner = null
+        set target = null
         set filter_group = null
         set is_penetrate = false
         set is_pathable = false
         set is_facing = false
         set projectile_eff = null
-        set projectile_owner = null
         set trg = null
         set eff_on_target = null
         set eff_after = null
-        set target = null
+        set attach_point = null
         call thistype.deallocate( this )
-    endmethod
-    
-    public method Area_Dmg takes nothing returns boolean
-        local group g = CreateGroup()
-        local unit c
-        local boolean is_exist = false
-        local effect effect2
-        
-        call GroupEnumUnitsInRange( g, EXGetEffectX(projectile_eff), EXGetEffectY(projectile_eff), coll_size, null )
-        
-        // 땅에 쳐박힐 때 이펙트 터지는거
-        if eff_after != null then
-            set effect2 = AddSpecialEffect(eff_after, eff_x, eff_y)
-            call EXSetEffectSize(effect2, eff_after_size/100)
-            call DestroyEffect( effect2 )
-        endif
-        
-        loop
-        set c = FirstOfGroup(g) 
-        exitwhen c == null
-            call GroupRemoveUnit(g, c)
-            if IsUnitAliveBJ(c) == true and IsPlayerEnemy(GetOwningPlayer(c), GetOwningPlayer(projectile_owner)) == true then
-                if is_penetrate == true then
-                    if IsUnitInGroup(c, filter_group) == false then
-                        call GroupAddUnit(filter_group, c)
-                        set is_exist = true
-                        
-                        call Unit_Dmg_Target( projectile_owner, c, dmg, dmg_type)
-                        if eff_on_target != null then
-                            call Effect_On_Unit(c, 0.0, 100, "chest", eff_on_target, 0.0)
-                        endif
-                    endif
-                else
-                    set is_exist = true
-                    call Unit_Dmg_Target( projectile_owner, c, dmg, dmg_type)
-                    if eff_on_target != null then
-                        call Effect_On_Unit(c, 0.0, 100, "chest", eff_on_target, 0.0)
-                    endif
-                endif
-            endif
-        endloop
-        
-        call Group_Clear(g)
-        
-        set g = null
-        set c = null
-        set effect2 = null
-        return is_exist
     endmethod
     
     public method Save_Old_Position takes nothing returns nothing
@@ -127,7 +86,7 @@ struct Projectile
         set old_y = eff_y
         set old_z = eff_z
     endmethod
-    
+
     public method Facing_Direction_Vector takes nothing returns nothing
         local real d_vec_x = eff_x - old_x
         local real d_vec_y = eff_y - old_y
@@ -139,17 +98,69 @@ struct Projectile
         call EXEffectMatRotateY(projectile_eff, pitch)
         call EXEffectMatRotateZ(projectile_eff, yaw)
         
-        call Save_Old_Position()
+        set old_x = eff_x
+        set old_y = eff_y
+        set old_z = eff_z
     endmethod
-
 endstruct
 
 
-library ProjectileLibrary requires Base, Basic
+library ProjectileLibrary requires Base, Basic, UnitDamage
 
 globals
-    private Projectile last_triggering_projectile
+    Projectile last_triggering_projectile
 endglobals
+
+private function Area_Dmg takes Projectile P returns boolean
+    local group g = CreateGroup()
+    local unit c
+    local boolean is_available = true
+    local boolean is_exist = false
+    local effect effect2
+    
+    call GroupEnumUnitsInRange( g, EXGetEffectX(P.projectile_eff), EXGetEffectY(P.projectile_eff), P.coll_size, null )
+    
+    // 땅에 쳐박힐 때 이펙트 터지는거
+    if P.eff_after != null then
+        set effect2 = AddSpecialEffect(P.eff_after, P.eff_x, P.eff_y)
+        call EXSetEffectSize(effect2, P.eff_after_size/100)
+        call DestroyEffect( effect2 )
+    endif
+
+    loop
+    set c = FirstOfGroup(g) 
+    exitwhen c == null
+        call GroupRemoveUnit(g, c)
+        if IsUnitAliveBJ(c) == true and IsPlayerEnemy(GetOwningPlayer(c), GetOwningPlayer(P.owner)) == true then
+            
+            set is_available = true
+            
+            if P.is_penetrate == true then
+                if IsUnitInGroup(c, P.filter_group) == true then
+                    set is_available = false
+                else
+                    call GroupAddUnit(P.filter_group, c)
+                endif
+            endif
+            
+            if is_available == true then
+                set is_exist = true
+                call Unit_Dmg_Target( P.owner, c, P.dmg, P.dmg_type)
+                
+                if P.eff_on_target != null then
+                    call Effect_On_Unit(c, 0.0, 100, P.attach_point, P.eff_on_target, 0.0)
+                endif
+            endif
+        endif
+    endloop
+    
+    call Group_Clear(g)
+    
+    set g = null
+    set c = null
+    set effect2 = null
+    return is_exist
+endfunction
 
 function Set_Effect_Euler_Angle takes effect e, real pitch, real roll, real yaw returns nothing
     call EXEffectMatReset(e)
@@ -193,22 +204,20 @@ private function Perpendicular_Projectile_Func2 takes nothing returns nothing
         set P.eff_z = GetLocationZ(loc)
     endif
     
-    if P.trg != null and is_end == true then
-        set last_triggering_projectile = P
-        call TriggerExecute(P.trg)
-    endif
-    
     call EXSetEffectZ(P.projectile_eff, P.eff_z)
     
     call P.Facing_Direction_Vector()
 
     if is_end == true then
-        call P.Area_Dmg()
+        call Area_Dmg(P)
         call Timer_Clear(t)
         call DestroyEffect(P.projectile_eff)
         
         if P.trg == null then
             call P.destroy()
+        else
+            set last_triggering_projectile = P
+            call TriggerExecute(P.trg)
         endif
     else
         call TimerStart(t, 0.02, false, function Perpendicular_Projectile_Func2)
@@ -322,22 +331,20 @@ private function Bezier_Like_Projectile_Func2 takes nothing returns nothing
         set P.eff_z = GetLocationZ(loc)
     endif
     
-    if P.trg != null and is_end == true then
-        set last_triggering_projectile = P
-        call TriggerExecute(P.trg)
-    endif
-    
     call EXSetEffectZ(P.projectile_eff, P.eff_z)
     
     call P.Facing_Direction_Vector()
 
     if is_end == true then
-        call P.Area_Dmg()
+        call Area_Dmg(P)
         call Timer_Clear(t)
         call DestroyEffect(P.projectile_eff)
         
         if P.trg == null then
             call P.destroy()
+        else
+            set last_triggering_projectile = P
+            call TriggerExecute(P.trg)
         endif
     else
         call TimerStart(t, 0.02, false, function Bezier_Like_Projectile_Func2)
@@ -381,8 +388,6 @@ private function Generic_Parabolic_Projectile_Func2 takes nothing returns nothin
     local Projectile P = LoadInteger(HT, id, 0)
     local boolean is_end = false
     local location loc
-    local real z
-    local effect effect2
 
     set P.time = P.time + 0.02
     set P.eff_x = Polar_X(EXGetEffectX(P.projectile_eff), P.unit_dist, P.angle)
@@ -392,32 +397,32 @@ private function Generic_Parabolic_Projectile_Func2 takes nothing returns nothin
     
     set loc = Location(P.eff_x, P.eff_y)
     
-    set z = P.eff_height + P.time * ( P.z_velocity - 0.5 * P.gravity * P.time )
+    set P.eff_z = P.eff_height + P.time * ( P.z_velocity - 0.5 * P.gravity * P.time )
     
-    if z <= GetLocationZ(loc) then
-        set z = GetLocationZ(loc)
+    if P.eff_z <= GetLocationZ(loc) then
+        set P.eff_z = GetLocationZ(loc)
         set is_end = true
     endif
 
     if P.is_pathable == false and IsTerrainPathable(EXGetEffectX(P.projectile_eff), EXGetEffectY(P.projectile_eff), PATHING_TYPE_WALKABILITY) == true then
         set is_end = true
-        set z = GetLocationZ(loc)
+        set P.eff_z = GetLocationZ(loc)
     endif
     
-    if P.trg != null and is_end == true then
-        set last_triggering_projectile = P
-        call TriggerExecute(P.trg)
-    endif
+    call EXSetEffectZ(P.projectile_eff, P.eff_z)
     
-    call EXSetEffectZ(P.projectile_eff, z)
+    call P.Facing_Direction_Vector()
 
     if is_end == true then
-        call P.Area_Dmg()
+        call Area_Dmg(P)
         call Timer_Clear(t)
         call DestroyEffect(P.projectile_eff)
         
         if P.trg == null then
             call P.destroy()
+        else
+            set last_triggering_projectile = P
+            call TriggerExecute(P.trg)
         endif
     else
         call TimerStart(t, 0.02, false, function Generic_Parabolic_Projectile_Func2)
@@ -427,7 +432,6 @@ private function Generic_Parabolic_Projectile_Func2 takes nothing returns nothin
     
     set t = null
     set loc = null
-    set effect2 = null
 endfunction
 
 private function Generic_Parabolic_Projectile_Func takes nothing returns nothing
@@ -436,10 +440,14 @@ private function Generic_Parabolic_Projectile_Func takes nothing returns nothing
     local Projectile P = LoadInteger(HT, id, 0)
     local effect e = AddSpecialEffect(P.eff, P.eff_x, P.eff_y)
     
+    set P.eff_z = EXGetEffectZ(e) + P.eff_height
+    
+    call P.Save_Old_Position()
+    
     call EXSetEffectSize(e, P.eff_size/100)
     call EXEffectMatRotateZ(e, P.angle)
-    call EXSetEffectZ(e, EXGetEffectZ(e) + P.eff_height)
-    
+    call EXSetEffectZ(e, P.eff_z)
+
     set P.projectile_eff = e
     
     call TimerStart(t, 0.02, false, function Generic_Parabolic_Projectile_Func2)
@@ -461,7 +469,7 @@ private function Simple_Projectile_Func2 takes nothing returns nothing
     
     call EXSetEffectXY(P.projectile_eff, P.eff_x, P.eff_y )
 
-    set is_exist = P.Area_Dmg()
+    set is_exist = Area_Dmg(P)
     
     if P.time <= 0.0001 then
         set is_end = true
@@ -475,17 +483,15 @@ private function Simple_Projectile_Func2 takes nothing returns nothing
         set is_end = true
     endif
     
-    if P.trg != null and is_end == true then
-        set last_triggering_projectile = P
-        call TriggerExecute(P.trg)
-    endif
-    
     if is_end == true then
         call Timer_Clear(t)
         call DestroyEffect(P.projectile_eff)
         
         if P.trg == null then
             call P.destroy()
+        else
+            set last_triggering_projectile = P
+            call TriggerExecute(P.trg)
         endif
     else
         call TimerStart(t, 0.02, false, function Simple_Projectile_Func2)
@@ -501,7 +507,7 @@ private function Simple_Projectile_Func takes nothing returns nothing
     local effect e = AddSpecialEffect(P.eff, P.eff_x, P.eff_y)
     
     if P.is_facing == true then
-        set P.angle = GetUnitFacing(P.projectile_owner) + P.angle
+        set P.angle = GetUnitFacing(P.owner) + P.angle
     endif
     
     call EXSetEffectSize(e, P.eff_size/100)
@@ -528,12 +534,12 @@ private function Guided_Projectile_Func2 takes nothing returns nothing
         set P.count = P.count - 1
         set P.flag = not P.flag
         set P.angle = 270
-        call P.Area_Dmg()
+        call Area_Dmg(P)
     elseif P.flag == false and RAbsBJ(P.angle) <= 180 then
         set P.count = P.count - 1
         set P.flag = not P.flag
         set P.angle = 0
-        call P.Area_Dmg()
+        call Area_Dmg(P)
     endif
 
     if P.flag == true then
@@ -556,7 +562,7 @@ private function Guided_Projectile_Func2 takes nothing returns nothing
     
     call P.Facing_Direction_Vector()
 
-    //set is_exist = P.Area_Dmg()
+    //set is_exist = Area_Dmg(P)
     
     if P.count <= 0 then
         set is_end = true
@@ -570,17 +576,15 @@ private function Guided_Projectile_Func2 takes nothing returns nothing
         set is_end = true
     endif
     
-    if P.trg != null and is_end == true then
-        set last_triggering_projectile = P
-        call TriggerExecute(P.trg)
-    endif
-    
     if is_end == true then
         call Timer_Clear(t)
         call DestroyEffect(P.projectile_eff)
         
         if P.trg == null then
             call P.destroy()
+        else
+            set last_triggering_projectile = P
+            call TriggerExecute(P.trg)
         endif
     else
         call TimerStart(t, 0.02, false, function Guided_Projectile_Func2)
@@ -614,9 +618,154 @@ private function Guided_Projectile_Func takes nothing returns nothing
     set e = null
 endfunction
 
+private function Bezier_Guided_Projectile_Func2 takes nothing returns nothing
+    local timer t = GetExpiredTimer()
+    local integer id = GetHandleId(t)
+    local Projectile P = LoadInteger(HT, id, 0)
+    local boolean is_end = false
+    local location loc
+    local real normalized_t
+
+
+    set P.elapsed_time = P.elapsed_time + 0.02
+    
+    set normalized_t = P.elapsed_time / P.time
+    
+    set loc = Location(GetUnitX(P.target), GetUnitY(P.target))
+    
+    set P.eff_x = (1 - normalized_t)*(1 - normalized_t)*P.origin_x + 2*(1 - normalized_t)*normalized_t*P.bezier_x + normalized_t*normalized_t*GetUnitX(P.target)
+    set P.eff_y = (1 - normalized_t)*(1 - normalized_t)*P.origin_y + 2*(1 - normalized_t)*normalized_t*P.bezier_y + normalized_t*normalized_t*GetUnitY(P.target)
+    set P.eff_z = (1 - normalized_t)*(1 - normalized_t)*P.origin_z + 2*(1 - normalized_t)*normalized_t*P.bezier_z + normalized_t*normalized_t*GetLocationZ(loc)
+    
+    call EXSetEffectXY(P.projectile_eff, P.eff_x, P.eff_y )
+    
+    call RemoveLocation(loc)
+    
+    set loc = Location(P.eff_x, P.eff_y)
+    
+    if P.eff_z <= GetLocationZ(loc) then
+        set P.eff_z = GetLocationZ(loc)
+        set is_end = true
+    endif
+
+    if P.is_pathable == false and IsTerrainPathable(EXGetEffectX(P.projectile_eff), EXGetEffectY(P.projectile_eff), PATHING_TYPE_WALKABILITY) == true then
+        set is_end = true
+        set P.eff_z = GetLocationZ(loc)
+    endif
+    
+    call EXSetEffectZ(P.projectile_eff, P.eff_z)
+    
+    call P.Facing_Direction_Vector()
+
+    if is_end == true then
+        call Area_Dmg(P)
+        call Timer_Clear(t)
+        call DestroyEffect(P.projectile_eff)
+        
+        if P.trg == null then
+            call P.destroy()
+        else
+            set last_triggering_projectile = P
+            call TriggerExecute(P.trg)
+        endif
+    else
+        call TimerStart(t, 0.02, false, function Bezier_Guided_Projectile_Func2)
+    endif
+    
+    call RemoveLocation(loc)
+    
+    set t = null
+    set loc = null
+endfunction
+
+private function Bezier_Guided_Projectile_Func takes nothing returns nothing
+    local timer t = GetExpiredTimer()
+    local integer id = GetHandleId(t)
+    local Projectile P = LoadInteger(HT, id, 0)
+    local effect e = AddSpecialEffect(P.eff, P.eff_x, P.eff_y)
+    local real vec_x
+    local real vec_y
+    local real vec2_x
+    local real vec2_y
+    local real normalize
+    
+    set P.eff_z = EXGetEffectZ(e) + P.eff_height
+    
+    call P.Save_Old_Position()
+    
+    call EXSetEffectSize(e, P.eff_size/100)
+    call EXEffectMatRotateZ(e, P.angle)
+    call EXSetEffectZ(e, P.eff_z)
+    
+    set P.origin_x = P.eff_x
+    set P.origin_y = P.eff_y
+    set P.origin_z = P.eff_z
+    
+    set vec_x = GetUnitX(P.target) - P.origin_x
+    set vec_y = GetUnitY(P.target) - P.origin_y
+
+    set normalize = SquareRoot( (vec_x * vec_x) + (vec_y * vec_y) ) 
+    
+    set vec_x = vec_x / normalize
+    set vec_y = vec_y / normalize
+    
+    set vec2_x = vec_y
+    set vec2_y = -vec_x
+    
+    set P.bezier_x = P.origin_x + P.front * vec_x + P.side * vec2_x
+    set P.bezier_y = P.origin_y + P.front * vec_y + P.side * vec2_y
+    set P.bezier_z = P.origin_z + P.vertical
+    
+    set P.projectile_eff = e
+    
+    call TimerStart(t, 0.02, false, function Bezier_Guided_Projectile_Func2)
+    
+    set t = null
+    set e = null
+endfunction
+
 // =============================================================================
 // API
 // =============================================================================
+
+function Bezier_Guided_Projectile takes unit u, unit target, real x, real y, real dmg, real coll_size, integer dmg_type, real time, real front, real side, real vertical, /*
+*/string eff, real eff_size, real eff_height, boolean is_pathable, string eff_after, real eff_after_size, trigger trg, real delay returns Projectile
+    local timer t = CreateTimer()
+    local integer id = GetHandleId(t)
+    local Projectile P = Projectile.create()
+
+    set P.owner = u
+    set P.target = target
+    set P.eff_x = x
+    set P.eff_y = y
+    set P.dmg = dmg
+    set P.coll_size = coll_size
+    set P.dmg_type = dmg_type
+    set P.time = time
+    set P.front = front
+    set P.side = side
+    set P.vertical = vertical
+    set P.eff = eff
+    set P.eff_size = eff_size
+    set P.eff_height = eff_height
+    set P.is_pathable = is_pathable
+    set P.eff_after = eff_after
+    set P.eff_after_size = eff_after_size
+    set P.trg = trg
+    set P.elapsed_time = 0
+    
+    if time <= 0.0001 then
+        set P.time = 0.01
+    endif
+    
+    call SaveInteger(HT, id, 0, P)
+    call TimerStart(t, delay, false, function Bezier_Guided_Projectile_Func)
+    
+    set t = null
+    
+    return P
+endfunction
+
 
 function Guided_Projectile takes unit u, unit target, real x, real y, real dmg, real coll_size, real time, real radius, real height, real angle, integer count,/*
 */ string eff, real eff_size, real eff_height, boolean is_pathable, string eff_after, real eff_after_size, trigger trg, real delay returns Projectile
@@ -624,7 +773,7 @@ function Guided_Projectile takes unit u, unit target, real x, real y, real dmg, 
     local integer id = GetHandleId(t)
     local Projectile P = Projectile.create()
 
-    set P.projectile_owner = u
+    set P.owner = u
     set P.target = target
     set P.eff_x = x
     set P.eff_y = y
@@ -658,13 +807,13 @@ function Guided_Projectile takes unit u, unit target, real x, real y, real dmg, 
     return P
 endfunction
 
-function Perpendicular_Projectile takes unit u, real x, real y, real dmg, real coll_size, boolean dmg_type, real time, real back, real side, real vertical, /*
+function Perpendicular_Projectile takes unit u, real x, real y, real dmg, real coll_size, integer dmg_type, real time, real back, real side, real vertical, /*
 */real dist, real angle, string eff, real eff_size, real eff_height, boolean is_pathable, string eff_after, real eff_after_size, trigger trg, real delay returns Projectile
     local timer t = CreateTimer()
     local integer id = GetHandleId(t)
     local Projectile P = Projectile.create()
 
-    set P.projectile_owner = u
+    set P.owner = u
     set P.eff_x = x
     set P.eff_y = y
     set P.dmg = dmg
@@ -697,13 +846,13 @@ function Perpendicular_Projectile takes unit u, real x, real y, real dmg, real c
     return P
 endfunction
 
-function Bezier_Like_Projectile takes unit u, real x, real y, real dmg, real coll_size, boolean dmg_type, real time, real back, real side, real vertical, /*
+function Bezier_Like_Projectile takes unit u, real x, real y, real dmg, real coll_size, integer dmg_type, real time, real back, real side, real vertical, /*
 */real dist, real angle, string eff, real eff_size, real eff_height, boolean is_pathable, string eff_after, real eff_after_size, trigger trg, real delay returns Projectile
     local timer t = CreateTimer()
     local integer id = GetHandleId(t)
     local Projectile P = Projectile.create()
 
-    set P.projectile_owner = u
+    set P.owner = u
     set P.eff_x = x
     set P.eff_y = y
     set P.dmg = dmg
@@ -742,13 +891,13 @@ endfunction
 // is_pathable -> true이면 심연 뚫고감, false 면 못 건너가고 터짐
 // eff_after -> 투사체 땅에서 터졌을 때 추가로 더할 이펙트, 안쓸꺼면 null (중요)
 // trg -> 투사체 땅에 터졌을 때 실행시킬 트리거, 안쓸꺼면 null (중요)
-function Generic_Parabolic_Projectile takes unit u, real x, real y, real dmg, real coll_size, boolean dmg_type, real velocity, real dist, real angle, /*
+function Generic_Parabolic_Projectile takes unit u, real x, real y, real dmg, real coll_size, integer dmg_type, real velocity, real dist, real angle, /*
 */real gravity, string eff, real eff_size, real eff_height, boolean is_pathable, string eff_after, real eff_after_size, trigger trg, real delay returns Projectile
     local timer t = CreateTimer()
     local integer id = GetHandleId(t)
     local Projectile P = Projectile.create()
 
-    set P.projectile_owner = u
+    set P.owner = u
     set P.eff_x = x
     set P.eff_y = y
     set P.dmg = dmg
@@ -783,13 +932,13 @@ endfunction
 // eff_on_target -> 데미지 줄때 chest부분에 추가 이펙 넣을건지?, 안쓸꺼면 null
 // trg -> 충돌 판정시 실행시킬 트리거, 안쓸꺼면 null (중요)
 // is_facing == true 이면 angle 은 add angle 로 작동
-function Generic_Projectile takes unit u, real x, real y, real dmg, real coll_size, boolean dmg_type, real time, real velocity, real angle, /*
-*/ string eff, real eff_size, real eff_height, boolean is_penetrate, boolean is_pathable, boolean is_facing, string eff_on_target, trigger trg, real delay returns Projectile
+function Generic_Projectile takes unit u, real x, real y, real dmg, real coll_size, integer dmg_type, real time, real velocity, real angle, /*
+*/ string eff, real eff_size, real eff_height, boolean is_penetrate, boolean is_pathable, boolean is_facing, string eff_on_target, string attach_point, trigger trg, real delay returns Projectile
     local timer t = CreateTimer()
     local integer id = GetHandleId(t)
     local Projectile P = Projectile.create()
 
-    set P.projectile_owner = u
+    set P.owner = u
     set P.eff_x = x
     set P.eff_y = y
     set P.dmg = dmg
@@ -807,6 +956,7 @@ function Generic_Projectile takes unit u, real x, real y, real dmg, real coll_si
     set P.eff_on_target = eff_on_target
     set P.trg = trg
     set P.is_facing = is_facing
+    set P.attach_point = attach_point
     
     if P.is_penetrate == true then
         set P.filter_group = CreateGroup()
