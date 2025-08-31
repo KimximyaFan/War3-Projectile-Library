@@ -8,12 +8,10 @@
 유닛을 생성 후 더미로 만들어 추가적인 라이브러리를 이용해 충돌 판별을 하는데 <br>
 작동이 무겁고 구현도 까다로운 단점이 존재함 <br>
 <br>
-이 라이브러리는 그러한 단점을 극복하기 위해 다음 과 같은 개선점을 가짐 <br>
-<br>  
-1. 함수 한줄로 끝내는 효율성<br>
-<br>
-2. 이펙트 기반이라 가벼움<br>
-<br>
+이 라이브러리는 그러한 단점을 극복하기 위해 다음 과 같은 개선점을 가짐
+
+1. 함수 한줄로 끝내는 효율성
+2. 이펙트 기반이라 가벼움
 
 <br>
 <br>
@@ -35,19 +33,19 @@
 
 ![3](https://github.com/user-attachments/assets/83ef1807-8349-463e-9679-d62a7cb6056d)
 
-해당 투사체는
+투사체가 땅으로 떨어지는 포물선 투사체임
 
 <br>
 
 <img width="247" height="197" alt="5" src="https://github.com/user-attachments/assets/c9c0a59a-aac3-49a2-a2be-321a93d656d2" />
 
-이 수식을 통해 구현됨
+해당 투사체는 위 수식을 통해 구현됨
 
 <br>
 <br>
 <br>
 
-<img width="966" height="374" alt="7" src="https://github.com/user-attachments/assets/b2fbdfce-bd7f-4f12-8f53-f1763a4228f0" />
+<img width="528" height="171" alt="6" src="https://github.com/user-attachments/assets/800f5af6-8477-4b71-ab37-303d1f14851d" />
 
 구현은 위와 같음
 
