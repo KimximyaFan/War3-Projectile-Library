@@ -16,6 +16,10 @@
 <br>
 <br>
 <br>
+<br>
+<br>
+<br>
+
 
 ### 기본 투사체
 
@@ -28,6 +32,10 @@
 <br>
 <br>
 <br>
+<br>
+<br>
+<br>
+
 
 ### 포물선 투사체
 
@@ -52,6 +60,10 @@
 <br>
 <br>
 <br>
+<br>
+<br>
+<br>
+
 
 ### 3축 가속도 투사체
 
@@ -73,6 +85,7 @@
 <br>
 <br>
 
+
 ![9](https://github.com/user-attachments/assets/3c9f1915-d29a-4813-b972-a1a6d99c3b75)
 
 ![10](https://github.com/user-attachments/assets/bedc5f41-a4db-4727-a12b-57ea9b0fc1f8)
@@ -90,6 +103,10 @@
 <br>
 <br>
 <br>
+<br>
+<br>
+<br>
+
 
 ### 4엽 장미 투사체
 
@@ -102,6 +119,10 @@
 <br>
 <br>
 <br>
+<br>
+<br>
+<br>
+
 
 ### 나선 투사체
 
@@ -142,6 +163,10 @@ a*t*cos t , a*t*sin t 형식으로 커스텀하면 크기를 조절할 수 있�
 <br>
 <br>
 <br>
+<br>
+<br>
+<br>
+
 
 ### 축변환 투사체
 
@@ -347,3 +372,129 @@ pitch 값을 구해야하는데 이는 dist와 출발점과 도착점의 z값의
 
 구현은 위와 같습니다
 
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+
+### 수치 미분 투사체 각도
+
+![17](https://github.com/user-attachments/assets/e6bc23ea-a041-4958-b9a3-c6da5edab831)
+
+각도 고려 없이 미사일 함수를 제작할 경우, 
+
+리본이나 구형 구체는 괜찮지만, 검 같은 각도가 중요한 모델로 미사일을 만들면
+
+궤도를 따라 이동하기는하나, 모델 각도가 고정되어있어서 위 그림처럼 단점이 도드라져 보임
+
+
+
+<img width="161" height="58" alt="image" src="https://github.com/user-attachments/assets/6b5611c4-b005-4bb5-ad62-2ba9fb71bbb8" />
+
+<img width="202" height="75" alt="image" src="https://github.com/user-attachments/assets/146eb897-9a8e-4524-8716-834614fdd022" />
+
+<img width="170" height="59" alt="image" src="https://github.com/user-attachments/assets/772307e0-ff7b-4867-ba25-6b534a426347" />
+
+정석은, 각 투사체 함수의 벡터함수 궤도를 정의하고,
+
+미분 및 정규화를 통해 속도벡터를 얻어야 투사체의 각도를 구할 수 있음
+
+하지만 이 방법은 두 가지 문제가 있음
+
+1. 궤도가 까다롭고 어려울 경우, 구현 자체가 어려움
+2. 구현 하더라도 연산량이 비쌈
+
+그래서 이 문제를 해결하려면 수치 미분 방법을 써야함
+
+투사체는 0.02초씩 이동하므로 꽤나 괜찮은 근사를 할 수 있음
+
+이 방법의 장점은 
+
+아무리 어려운 궤도라도 쉬운 구현이 가능하고, 
+
+그리고 모든 투사체 함수가 해당 방법을 쓰므로 재사용성도 높음
+
+<br>
+<br>
+<br>
+
+<img width="317" height="87" alt="image" src="https://github.com/user-attachments/assets/7450fde6-51b5-4171-8c16-f23689d6059c" />
+
+수식은 위와 같으며
+
+<br>
+<br>
+<br>
+
+<img width="588" height="351" alt="image" src="https://github.com/user-attachments/assets/5d0e6a12-3037-4f9e-8f4b-628a545f09d9" />
+
+그래프로 보면, 이 방법에 대해서 좀 더 직관적으로 이해할 수 있음
+
+<br>
+<br>
+<br>
+
+<img width="399" height="432" alt="image" src="https://github.com/user-attachments/assets/6ea60528-6b5a-4653-9712-2d612ddeb6f2" />
+
+수치 미분 투사체 각도를 구하는 수식은 위와 같음
+
+<br>
+<br>
+<br>
+
+<img width="643" height="375" alt="image" src="https://github.com/user-attachments/assets/fcec33bb-489d-4b38-bd48-fb0989211d1f" />
+
+구현은 위와 같음
+
+<br>
+
+<img width="357" height="43" alt="image" src="https://github.com/user-attachments/assets/d3d6dfd1-2113-4902-ab01-8fdacff35a22" />
+
+각 궤도함수 구현에 
+
+해당 함수콜 한번씩만 해주면 궤도 맞춰서 투사체 각도 조정됨
+
+<br>
+<br>
+<br>
+<br>
+<br>
+
+#### 예시
+
+![18](https://github.com/user-attachments/assets/ee500200-06bc-4f42-88d5-b44d05b6ea41)
+
+미적용
+
+![19](https://github.com/user-attachments/assets/dd352456-4073-4838-9558-3feb98b81698)
+
+적용
+
+<br>
+<br>
+<br>
+<br>
+
+![20](https://github.com/user-attachments/assets/8cffa717-a1e5-48c7-a670-e017e022d6e8)
+
+미적용
+
+![21](https://github.com/user-attachments/assets/e6107b6c-e55b-465f-95e2-32b0b26742d8)
+![22](https://github.com/user-attachments/assets/c1163274-2ad7-4153-bb68-b80e4f2001b3)
+
+적용
+
+<br>
+<br>
+<br>
+<br>
+
+![23](https://github.com/user-attachments/assets/92a423dc-33f8-4c92-9187-aa224e7c7977)
+
+미적용
+
+![24](https://github.com/user-attachments/assets/eb5dd793-422d-4df2-9b51-85eef23bd4e2)
+
+적용
