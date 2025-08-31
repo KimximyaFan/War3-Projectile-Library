@@ -75,7 +75,7 @@
 
 한 축에 대해서, 속도 v에 대해서 동일 거리를 움직이려면 2v/t 만큼 가속도를 줘야함
 
-<img width="213" height="85" alt="image" src="https://github.com/user-attachments/assets/af966822-9376-423b-94f5-c6a76fcdf2d1" />
+<img width="213" height="85" alt="image" src="https://github.com/user-attachments/assets/af966822-9376-423b-94f5-c6a76fcdf2d1" /> <br>
 
 <img width="199" height="94" alt="image" src="https://github.com/user-attachments/assets/6c077007-609e-4e64-90f7-d94749476586" />
 
@@ -391,11 +391,11 @@ pitch 값을 구해야하는데 이는 dist와 출발점과 도착점의 z값의
 
 
 
-<img width="161" height="58" alt="image" src="https://github.com/user-attachments/assets/6b5611c4-b005-4bb5-ad62-2ba9fb71bbb8" />
+<img width="161" height="58" alt="image" src="https://github.com/user-attachments/assets/6b5611c4-b005-4bb5-ad62-2ba9fb71bbb8" /> <br>
 
-<img width="202" height="75" alt="image" src="https://github.com/user-attachments/assets/146eb897-9a8e-4524-8716-834614fdd022" />
+<img width="202" height="75" alt="image" src="https://github.com/user-attachments/assets/146eb897-9a8e-4524-8716-834614fdd022" /> <br>
 
-<img width="170" height="59" alt="image" src="https://github.com/user-attachments/assets/772307e0-ff7b-4867-ba25-6b534a426347" />
+<img width="170" height="59" alt="image" src="https://github.com/user-attachments/assets/772307e0-ff7b-4867-ba25-6b534a426347" /> <br>
 
 정석은, 각 투사체 함수의 벡터함수 궤도를 정의하고,
 
@@ -422,7 +422,7 @@ pitch 값을 구해야하는데 이는 dist와 출발점과 도착점의 z값의
 
 <img width="317" height="87" alt="image" src="https://github.com/user-attachments/assets/7450fde6-51b5-4171-8c16-f23689d6059c" />
 
-수식은 위와 같으며
+수치 미분
 
 <br>
 <br>
